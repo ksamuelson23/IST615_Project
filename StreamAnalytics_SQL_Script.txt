@@ -1,0 +1,49 @@
+SELECT
+    name,
+    CAST(EventEnqueuedUtcTime AS nvarchar(max)) as rowkey,
+    d1_r1_front,
+    d1_r1_back,
+    d1_r2_front,
+    d1_r2_back,
+    d1_humidity,
+    EventProcessedUtcTime as processed_time,
+    EventEnqueuedUtcTime as enqueued_time
+INTO datacenter1storage
+FROM ist615serverhub
+WHERE PartitionId = 0
+
+
+SELECT
+    name,
+    CAST(EventEnqueuedUtcTime AS nvarchar(max)) as rowkey,
+    d2_r1_front,
+    d2_r1_back,
+    d2_r2_front,
+    d2_r2_back,
+    d2_humidity,
+    EventProcessedUtcTime as processed_time,
+    EventEnqueuedUtcTime as enqueued_time
+INTO datacenter2storage
+FROM ist615serverhub
+WHERE PartitionId = 1
+
+
+SELECT
+    d1_r1_front,
+    d1_r1_back,
+    d1_r2_front,
+    d1_r2_back,
+    d2_r1_front,
+    d2_r1_back,
+    d2_r2_front,
+    d2_r2_back,
+    d1_humidity,
+    d2_humidity
+INTO serverdata
+FROM ist615serverhub
+WHERE
+    d1_humidity > 60 OR d2_humidity > 60 OR
+    d1_r1_front > 68 OR d1_r2_front > 68 OR
+    d2_r1_front > 68 OR d2_r2_front > 68 OR
+    d1_r1_back > 88 OR d1_r2_back > 88 OR
+    d2_r1_back > 88 OR d2_r2_back > 88

@@ -1,0 +1,195 @@
+{
+    "definition": {
+        "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+        "actions": {
+            "Condition": {
+                "actions": {
+                    "For_each_1": {
+                        "actions": {
+                            "Abandon_the_message_in_a_queue_1": {
+                                "inputs": {
+                                    "host": {
+                                        "connection": {
+                                            "name": "@parameters('$connections')['servicebus-1']['connectionId']"
+                                        }
+                                    },
+                                    "method": "post",
+                                    "path": "/@{encodeURIComponent(encodeURIComponent('waitbus'))}/messages/abandon",
+                                    "queries": {
+                                        "lockToken": "@items('For_each_1')?['LockToken']",
+                                        "queueType": "Main",
+                                        "sessionId": ""
+                                    }
+                                },
+                                "type": "ApiConnection"
+                            }
+                        },
+                        "foreach": "@body('Get_messages_from_a_queue_(peek-lock)')",
+                        "type": "Foreach"
+                    }
+                },
+                "else": {
+                    "actions": {
+                        "For_each": {
+                            "actions": {
+                                "Send_Email_(V3)": {
+                                    "inputs": {
+                                        "body": {
+                                            "Body": "<p>A datacenter environmental anamoly has been detected.</p><br><p>@{base64ToString(items('For_each')?['ContentData'])}</p><br><p>See more: </p><br><p>https://app.powerbi.com/groups/me/reports/efdfe7d7-a333-410d-91e7-acfa70c0095b/ReportSection?experience=power-bi</p><br><p>https://portal.azure.com/#@syr.edu/resource/subscriptions/e7f6069e-5a3f-4a46-a22e-7c441a9f6255/resourceGroups/IST615-FinalProject/providers/Microsoft.StreamAnalytics/streamingjobs/ist615-server-analytics/queryV2</p>",
+                                            "From": "ist615serveralert@outlook.com",
+                                            "Importance": "High",
+                                            "Subject": "Server Alert",
+                                            "To": "ksamue01@syr.edu"
+                                        },
+                                        "host": {
+                                            "connection": {
+                                                "name": "@parameters('$connections')['smtp']['connectionId']"
+                                            }
+                                        },
+                                        "method": "post",
+                                        "path": "/SendEmailV3"
+                                    },
+                                    "type": "ApiConnection"
+                                }
+                            },
+                            "foreach": "@body('Get_messages_from_a_queue_(peek-lock)_1')",
+                            "runAfter": {
+                                "Get_messages_from_a_queue_(peek-lock)_1": [
+                                    "Succeeded"
+                                ]
+                            },
+                            "type": "Foreach"
+                        },
+                        "Get_messages_from_a_queue_(peek-lock)_1": {
+                            "inputs": {
+                                "host": {
+                                    "connection": {
+                                        "name": "@parameters('$connections')['servicebus-1']['connectionId']"
+                                    }
+                                },
+                                "method": "get",
+                                "path": "/@{encodeURIComponent(encodeURIComponent('serverdata'))}/messages/batch/peek",
+                                "queries": {
+                                    "maxMessageCount": 1,
+                                    "queueType": "Main"
+                                }
+                            },
+                            "type": "ApiConnection"
+                        },
+                        "Send_message": {
+                            "inputs": {
+                                "body": {
+                                    "SessionId": "@triggerBody()?['SessionId']"
+                                },
+                                "host": {
+                                    "connection": {
+                                        "name": "@parameters('$connections')['servicebus-1']['connectionId']"
+                                    }
+                                },
+                                "method": "post",
+                                "path": "/@{encodeURIComponent(encodeURIComponent('waitbus'))}/messages",
+                                "queries": {
+                                    "systemProperties": "None"
+                                }
+                            },
+                            "runAfter": {
+                                "For_each": [
+                                    "Succeeded"
+                                ]
+                            },
+                            "type": "ApiConnection"
+                        }
+                    }
+                },
+                "expression": {
+                    "and": [
+                        {
+                            "equals": [
+                                "@empty(outputs('Get_messages_from_a_queue_(peek-lock)').body)",
+                                false
+                            ]
+                        }
+                    ]
+                },
+                "runAfter": {
+                    "Get_messages_from_a_queue_(peek-lock)": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "If"
+            },
+            "Get_messages_from_a_queue_(peek-lock)": {
+                "inputs": {
+                    "host": {
+                        "connection": {
+                            "name": "@parameters('$connections')['servicebus-1']['connectionId']"
+                        }
+                    },
+                    "method": "get",
+                    "path": "/@{encodeURIComponent(encodeURIComponent('waitbus'))}/messages/batch/peek",
+                    "queries": {
+                        "maxMessageCount": 1,
+                        "queueType": "Main",
+                        "sessionId": ""
+                    }
+                },
+                "runAfter": {},
+                "type": "ApiConnection"
+            }
+        },
+        "contentVersion": "1.0.0.0",
+        "outputs": {},
+        "parameters": {
+            "$connections": {
+                "defaultValue": {},
+                "type": "Object"
+            }
+        },
+        "triggers": {
+            "When_a_message_is_received_in_a_queue_(auto-complete)": {
+                "evaluatedRecurrence": {
+                    "frequency": "Second",
+                    "interval": 10
+                },
+                "inputs": {
+                    "host": {
+                        "connection": {
+                            "name": "@parameters('$connections')['servicebus-1']['connectionId']"
+                        }
+                    },
+                    "method": "get",
+                    "path": "/@{encodeURIComponent(encodeURIComponent('serverdata'))}/messages/head",
+                    "queries": {
+                        "queueType": "Main"
+                    }
+                },
+                "recurrence": {
+                    "frequency": "Second",
+                    "interval": 10
+                },
+                "runtimeConfiguration": {
+                    "concurrency": {
+                        "runs": 1
+                    }
+                },
+                "type": "ApiConnection"
+            }
+        }
+    },
+    "parameters": {
+        "$connections": {
+            "value": {
+                "servicebus-1": {
+                    "connectionId": "/subscriptions/e7f6069e-5a3f-4a46-a22e-7c441a9f6255/resourceGroups/IST615-FinalProject/providers/Microsoft.Web/connections/servicebus-1",
+                    "connectionName": "servicebus-1",
+                    "id": "/subscriptions/e7f6069e-5a3f-4a46-a22e-7c441a9f6255/providers/Microsoft.Web/locations/eastus/managedApis/servicebus"
+                },
+                "smtp": {
+                    "connectionId": "/subscriptions/e7f6069e-5a3f-4a46-a22e-7c441a9f6255/resourceGroups/IST615-FinalProject/providers/Microsoft.Web/connections/smtp",
+                    "connectionName": "smtp",
+                    "id": "/subscriptions/e7f6069e-5a3f-4a46-a22e-7c441a9f6255/providers/Microsoft.Web/locations/eastus/managedApis/smtp"
+                }
+            }
+        }
+    }
+}
